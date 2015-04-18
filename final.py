@@ -36,6 +36,13 @@ PARTITION_TYPES = {
     0xEB: 'BeOS'
 }
 
+VALID_TYPES = {
+    0x04: 16,
+    0x06: 16,
+    0x0B: 32,
+    0x0C: 32
+}
+
 
 def to_value(char):
     padded = '\x00\x00\x00' + str(char)
@@ -68,7 +75,7 @@ def _print_mbr(entries):
         str(entries[3][9]).zfill(10))
     print '======================================='
 
-def _read_image(image):
+def _parse_mbr(image):
     boot_data = image[:440]
     disk_signature = image[440:446]
     entries = image[446:510]
@@ -82,7 +89,65 @@ def _read_image(image):
     entry_3 = entry_structure.unpack(entries[48:64])
     entry_list = [entry_0, entry_1, entry_2, entry_3]
     _print_mbr(entry_list)
+    return entry_list
 
+def _parse_vbr(entry_list, image):
+    #cluster2 = 0
+    #cycle through each partition
+    for index, entry in enumerate(entry_list):
+        
+        #values needed to be found
+        partitionType = entry[4]
+        bytesPerSector = 0
+        sectorsPerCluster = 0
+        reservedAreaSize = 0
+        numFats = 0
+        rootDirSectors = 0
+        maxNumFilesDir = 0
+        sectorsPerFat = 0
+        cluster2 = 0
+        partitionInfo = [bytesPerSector, sectorsPerCluster,reservedAreaSize,numFats,
+                         rootDirSectors, maxNumFilesDir, sectorsPerFat, cluster2]
+        
+        #extract vbr if FAT16/32 partition
+        if VALID_TYPES.get(to_value(partitionType)) == 32 or VALID_TYPES.get(to_value(partitionType)) == 16:
+            start = entry[8] * 512
+            end = start + 512
+
+            #parsing the partition's vbr
+            vbr = image[start:end]
+            entry_structure = struct.Struct("<HBHBHHBHHHIII")
+            vbr_structure = entry_structure.unpack(vbr[11:40])
+
+            partitionInfo[0] = vbr_structure[0]
+            partitionInfo[1] = vbr_structure[1]
+            partitionInfo[2] = vbr_structure[2]
+            partitionInfo[3] = vbr_structure[3]
+            if VALID_TYPES.get(to_value(partitionType)) == 16:
+                partitionInfo[4] = vbr_structure[4] * 32 / partitionInfo[0]
+                partitionInfo[6] = vbr_structure[7]
+                partitionInfo[7] = partitionInfo[2] + (partitionInfo[6] * partitionInfo[3]) + partitionInfo[4]
+            partitionInfo[5] = vbr_structure[4]
+            if VALID_TYPES.get(to_value(partitionType)) == 32:
+                partitionInfo[6] = vbr_structure[12]
+                partitionInfo[7] = partitionInfo[2] + (partitionInfo[6] * partitionInfo[3])
+
+            #update cluster2
+            partitionInfo[7] += entry[8]
+            
+            #print the information
+            
+            print("Partition %d(%s)" % (index, to_type(to_value(partitionType))))
+            print("Reserved area: Start sector: %d Ending sector: %d Size: %d sectors" % (0, (partitionInfo[2] - 1), (partitionInfo[2] - 1) + 1))
+            print("Sectors per cluster: %d sectors" % (partitionInfo[2]))
+            print("FAT area: Starting sector: %d Ending sector: %d" % (partitionInfo[2],
+                                                                       (partitionInfo[2] - 1 + (partitionInfo[3] * partitionInfo[6]))))
+            print("# of FATs: %d" % (partitionInfo[3]))
+            print("The size of each FAT: %d sectors" % (partitionInfo[6]))
+            print("The first sector of cluster 2: %d sectors" % (partitionInfo[7]))
+            print('=======================================')
+            
+        
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Extract and read MBR and VBR for given image file.')
@@ -122,7 +187,8 @@ if __name__ == '__main__':
     #read the raw image
     info = open(filename, 'rb').read()
     mbr = info[:512]
-    _read_image(mbr)
+    entry_list = _parse_mbr(mbr)
+    _parse_vbr(entry_list, info)
 
 
     
