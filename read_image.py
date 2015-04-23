@@ -53,8 +53,8 @@ def calcChecksums(filename):
    sHA1 = hashlib.sha1(inputFile).hexdigest()
 
    #print the two values
-   output = "\nMD5:\t" + mD5 + "\n\nSHA1:\t" + sHA1 + "\n"
-   print output + '=======================================\n'
+   output = "MD5:\t" + mD5 + "\n\nSHA1:\t" + sHA1
+   print 'Checksums:\n=======================================\n' + output 
     
    #write checksums to files
    name = ''
@@ -86,14 +86,15 @@ def calcMBR(filename):
    partitionList = [partition0, partition1, partition2, partition3]
 
    #print partition info found from the MBR
+
+   print ('=======================================')
+   
    for partition in partitionList:
       print '(0{0:x}) {1}, {2}, {3}'.format(
       (partition[3]),
       findType('{:x}'.format(partition[3])),
       str(partition[6]).zfill(10),
       str(partition[7]).zfill(10))
-
-   print ('=======================================\n')
 
    return partitionList
 
@@ -144,6 +145,7 @@ def calcVBR(filename, partitionList):
          partitionInfo[7] += partition[6]
             
          #print the information
+         print('=======================================')
          print("Partition {0}({1})").format(index, findType(partitionType))
          print("Reserved area: Start sector: {0} Ending sector: {1} Size: {2} sectors").format(0,(partitionInfo[2] - 1),partitionInfo[2])
          print("Sectors per cluster: {0} sectors").format(partitionInfo[1])
@@ -152,7 +154,7 @@ def calcVBR(filename, partitionList):
          print("# of FATs: {0}").format(partitionInfo[3])
          print("The size of each FAT: {0} sectors").format(partitionInfo[6])
          print("The first sector of cluster 2: {0} sectors").format(partitionInfo[7])
-         print('=======================================')
+         
    
 
 if __name__ == '__main__':
