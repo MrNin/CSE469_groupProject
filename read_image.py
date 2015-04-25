@@ -4,6 +4,8 @@ import sys
 import os
 import struct
 
+from os import path
+
 
 def findType(char):
    typeList = {'1': 'DOS 12-bit FAT',
@@ -54,22 +56,36 @@ def calcChecksums(filename):
 
    #print the two values
    output = "MD5:\t" + mD5 + "\n\nSHA1:\t" + sHA1
-   print 'Checksums:\n=======================================\n' + output 
+   print '\nChecksums:\n=======================================\n' + output 
     
    #write checksums to files
-   name = ''
-   index = filename.find('.img', 0)
+   name = filename
+   index = -2
+   while index != -1:
+      index = name.find('\\',0)
+      if index != -1:
+         place = index + 1
+         name = name[place:]
 
+   while index != -1:
+      index = name.find('/',0)
+      if index != -1:
+         place = index + 1
+         name = name[place:]
+         
+   index = name.find('.img', 0)
+   
    if index != -1:
-        name = filename[0:index]
+        name = name[0:index]
    else:
-      name = filename
+      name = name
 
    mD5file = 'MD5-' + name + '.txt'
    sHAfile = 'SHA-' + name + '.txt'
 
    open(mD5file, 'w').write(mD5)
    open(sHAfile, 'w').write(sHA1)
+
 
 def calcMBR(filename):
    #open image file and locate relevant data
@@ -95,6 +111,8 @@ def calcMBR(filename):
       findType('{:x}'.format(partition[3])),
       str(partition[6]).zfill(10),
       str(partition[7]).zfill(10))
+
+   
 
    return partitionList
 
@@ -154,25 +172,31 @@ def calcVBR(filename, partitionList):
          print("# of FATs: {0}").format(partitionInfo[3])
          print("The size of each FAT: {0} sectors").format(partitionInfo[6])
          print("The first sector of cluster 2: {0} sectors").format(partitionInfo[7])
-         
+
+      
    
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Extract and read MBR and VBR for a given image file.')
-    parser.add_argument('-i', '--input', help='Path to a RAW image file.')
+    parser.add_argument('input', help='Path to a RAW image file.')
+
+    #take in the name of the designated file and begin to read it
     args = parser.parse_args()
-    if args.input is None:
+    filename = args.input
+    filePath = path.relpath(filename)
+
+    #checking if valid input
+    if filename is None:
         parser.print_help()
         sys.exit(1)
-    if not os.path.isfile(args.input):
+    if not os.path.isfile(filename):
         print 'File does not exist.'
         sys.exit(1)
 
-    #take in the name of the designated file and begin to read it
-    filename = args.input
-
-    calcChecksums(filename)
-    partitionList = calcMBR(filename)
-    calcVBR(filename, partitionList)
+    
+   #begin operations on given image file
+    calcChecksums(filePath)
+    partitionList = calcMBR(filePath)
+    calcVBR(filePath, partitionList)
     
