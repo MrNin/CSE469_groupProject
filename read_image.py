@@ -6,7 +6,7 @@ import struct
 
 from os import path
 
-
+#determines what type of partition it is by a given hex value
 def findType(char):
    typeList = {'1': 'DOS 12-bit FAT',
                '4': 'DOS 16-bit FAT for partitions smaller than 32 MB',
@@ -38,7 +38,7 @@ def findType(char):
    
    return typeList[char]
    
-
+#Determines if a partition is FAT 32/16
 def isValid(char):
    if char == '4' or char == '6':
       return 16
@@ -47,6 +47,8 @@ def isValid(char):
    else:
       return -1
 
+   
+#finds the MD5 and SHA1 checksums for an image file
 def calcChecksums(filename):
    inputFile = open(filename, 'rb').read()
    
@@ -61,6 +63,8 @@ def calcChecksums(filename):
    #write checksums to files
    name = filename
    index = -2
+
+   #find base name for file
    while index != -1:
       index = name.find('\\',0)
       if index != -1:
@@ -86,7 +90,7 @@ def calcChecksums(filename):
    open(mD5file, 'w').write(mD5)
    open(sHAfile, 'w').write(sHA1)
 
-
+#Parse the MBR of the given image file
 def calcMBR(filename):
    #open image file and locate relevant data
    image = open(filename, 'rb').read()
@@ -102,7 +106,6 @@ def calcMBR(filename):
    partitionList = [partition0, partition1, partition2, partition3]
 
    #print partition info found from the MBR
-
    print ('=======================================')
    
    for partition in partitionList:
@@ -116,6 +119,7 @@ def calcMBR(filename):
 
    return partitionList
 
+#parse the VBR of the give image file
 def calcVBR(filename, partitionList):
    image = open(filename, 'rb').read()
 
@@ -177,6 +181,7 @@ def calcVBR(filename, partitionList):
    
 
 if __name__ == '__main__':
+   #Prepare for user input
     parser = argparse.ArgumentParser(
         description='Extract and read MBR and VBR for a given image file.')
     parser.add_argument('input', help='Path to a RAW image file.')
